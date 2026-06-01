@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Doações</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #d4c4b0 0%, #a08968 100%);
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    .header {
+      background: linear-gradient(135deg, #c9b299 0%, #9b7d5c 100%);
+      color: white;
+      padding: 25px;
+      text-align: center;
+      border-radius: 10px 10px 0 0;
+    }
+
+    .tabs {
+      display: flex;
+      background: #f5f5f5;
+      border-bottom: 2px solid #ddd;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 15px;
+      font-weight: bold;
+    }
+
+    .tab:hover { background: #e0e0e0; }
+
+    .tab.ativo {
+      background: white;
+      color: #9b7d5c;
+      border-bottom: 3px solid #9b7d5c;
+    }
+
+    .conteudo { padding: 30px; }
+    .secao { display: none; }
+    .secao.ativo { display: block; }
+
+    .campo { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .linha {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .botao {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 5px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn-primary { background: #9b7d5c; color: white; }
+    .btn-primary:hover { background: #8b6d4c; }
+    .btn-danger { background: #dc3545; color: white; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: linear-gradient(135deg, #c9b299 0%, #9b7d5c 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .card h3 { font-size: 35px; margin: 10px 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th { background: #f5f5f5; font-weight: bold; }
+
+    .alerta {
+      padding: 12px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    .alerta.mostrar { display: block; }
+
+    .sucesso {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .erro {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .box-config {
+      background: #fff3cd;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      border-left: 4px solid #ffc107;
+    }
+
+    .grafico-box {
+      margin-top: 25px;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Sistema de Controle de Doações</h1>
+      <p>Igreja Comunitária - Santa Cruz do Sul/RS</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab ativo" onclick="mudarAba(event,'config')">Configuração</button>
+      <button class="tab" onclick="mudarAba(event,'dashboard')">Dashboard</button>
+      <button class="tab" onclick="mudarAba(event,'entrada')">Nova Doação</button>
+      <button class="tab" onclick="mudarAba(event,'saida')">Entregar</button>
+      <button class="tab" onclick="mudarAba(event,'estoque')">Estoque</button>
+    </div>
+
+    <div class="conteudo">
+      <div id="mensagem" class="alerta"></div>
+
+      <div id="config" class="secao ativo">
+        <h2>Configuração Inicial</h2>
+
+        <div class="box-config">
+          <h3>Passo 1: Criar planilha no Google Sheets</h3>
+          <p>Acesse sheets.google.com e crie uma planilha com 3 abas:</p>
+          <ul>
+            <li><strong>Entrada:</strong> Data | Tipo | Genero | Tamanho | Quantidade | Estado</li>
+            <li><strong>Saidas:</strong> Data | Tipo | Genero | Tamanho | Quantidade | Beneficiario | Voluntario</li>
+            <li><strong>Estoque:</strong> Tipo | Genero | Tamanho | Quantidade | Estado</li>
+          </ul>
+        </div>
+
+        <div class="box-config">
+          <h3>Passo 2: Configurar Apps Script</h3>
+          <p>Na planilha: Extensões > Apps Script</p>
+          <p>Cole o código fornecido e implante como App Web</p>
+          <p>Copie a URL gerada (termina com /exec)</p>
+        </div>
+
+        <div class="box-config">
+          <h3>Resumo da configuração</h3>
+          <p>Abra o bloco de notas na área de trabalho (sistema doações)</p>
+          <p>Tem dois arquivos txt, apps_script e link_planilha</p>
+          <p>Link_planilha vai ir para o google sheets, copie o nome da planilha que tem no bloco de notas</p>
+          <p>Coloque no campo abaixo</p>
+          <p>O arquivo apps_script é o arquivo do código que vai dentro da planilha - extensões - app script </p>
+          <p>Verifique se o código é o mesmo, caso não seja copie e cole o código do bloco de notas apps_script </p>
+          <p>Implementar - nova implementação - App da Web</p>
+          <p>Coloque no campo abaixo</p>
+          <p>Copie o a URL - concluir - cola no campo abaixo </p>
+          <p>Salvar</p>
+        </div>
+
+        <div class="campo">
+          <label>ID da Planilha:</label>
+          <input type="text" id="idPlanilha" placeholder="Cole o ID da sua planilha aqui" />
+        </div>
+
+        <div class="campo">
+          <label>URL do Apps Script:</label>
+          <input type="text" id="urlScript" placeholder="https://script.google.com/macros/s/.../exec" />
+        </div>
+
+        <button class="botao btn-primary" onclick="salvarConfiguracao()">Salvar</button>
+      </div>
+
+      <div id="dashboard" class="secao">
+        <h2>Dashboard</h2>
+
+        <div class="cards">
+          <div class="card">
+            <p>Recebidas este Mês</p>
+            <h3 id="totalRecebidas">0</h3>
+          </div>
+          <div class="card">
+            <p>Doadas este Mês</p>
+            <h3 id="totalDoadas">0</h3>
+          </div>
+          <div class="card">
+            <p>Em Estoque</p>
+            <h3 id="totalEstoque">0</h3>
+          </div>
+        </div>
+
+        <div class="grafico-box">
+          <h3>Movimentação Mensal</h3>
+          <canvas id="graficoMensal"></canvas>
+        </div>
+      </div>
+
+      <div id="entrada" class="secao">
+        <h2>Registrar Doação Recebida</h2>
+        <form id="formEntrada" onsubmit="registrarEntrada(event)">
+          <div class="linha">
+            <div class="campo">
+              <label>Tipo de Roupa:</label>
+              <input type="text" id="tipoEntrada" required />
+            </div>
+            <div class="campo">
+              <label>Gênero:</label>
+              <select id="generoEntrada" required>
+                <option value="">Selecione</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Feminino">Feminino</option>
+                <option value="Unissex">Unissex</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="linha">
+            <div class="campo">
+              <label>Tamanho:</label>
+              <select id="tamanhoEntrada" required>
+                <option value="">Selecione</option>
+                <option value="PP">PP</option>
+                <option value="P">P</option>
+                <option value="M">M</option>
+                <option value="G">G</option>
+                <option value="GG">GG</option>
+                <option value="XGG">XGG</option>
+                <option value="Infantil 2">Infantil 2</option>
+                <option value="Infantil 4">Infantil 4</option>
+                <option value="Infantil 6">Infantil 6</option>
+                <option value="Infantil 8">Infantil 8</option>
+                <option value="Infantil 10">Infantil 10</option>
+                <option value="Infantil 12">Infantil 12</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>Quantidade:</label>
+              <input type="number" id="qtdEntrada" min="1" required />
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>Estado:</label>
+            <select id="estadoEntrada" required>
+              <option value="">Selecione</option>
+              <option value="Nova">Nova</option>
+              <option value="Seminova">Seminova</option>
+              <option value="Usada">Usada</option>
+            </select>
+          </div>
+
+          <button type="submit" class="botao btn-primary">Registrar</button>
+        </form>
+      </div>
+
+      <div id="saida" class="secao">
+        <h2>Entregar Doação</h2>
+        <form id="formSaida" onsubmit="registrarSaida(event)">
+          <div class="linha">
+            <div class="campo">
+              <label>Tipo de Roupa:</label>
+              <input type="text" id="saidaTipo" required />
+            </div>
+            <div class="campo">
+              <label>Gênero:</label>
+              <select id="saidaGenero" required>
+                <option value="">Selecione</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Feminino">Feminino</option>
+                <option value="Unissex">Unissex</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="linha">
+            <div class="campo">
+              <label>Tamanho:</label>
+              <select id="saidaTamanho" required>
+                <option value="">Selecione</option>
+                <option value="PP">PP</option>
+                <option value="P">P</option>
+                <option value="M">M</option>
+                <option value="G">G</option>
+                <option value="GG">GG</option>
+                <option value="XGG">XGG</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>Quantidade:</label>
+              <input type="number" id="saidaQuantidade" min="1" required />
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>Beneficiário (opcional):</label>
+            <input type="text" id="beneficiario" />
+          </div>
+
+          <button type="submit" class="botao btn-danger">Registrar Entrega</button>
+        </form>
+
+        <h3 style="margin-top: 40px;">Itens Disponíveis em Estoque</h3>
+        <table style="margin-bottom: 30px;">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Gênero</th>
+              <th>Tamanho</th>
+              <th>Qtd Disponível</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaEstoqueDisponivel"></tbody>
+        </table>
+
+        <h3>Últimas Entregas</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Tamanho</th>
+              <th>Qtd</th>
+              <th>Beneficiário</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaSaidas"></tbody>
+        </table>
+      </div>
+
+      <div id="estoque" class="secao">
+        <h2>Estoque Atual</h2>
+        <button class="botao btn-primary" onclick="atualizarEstoque()">Atualizar</button>
+        <table>
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Gênero</th>
+              <th>Tamanho</th>
+              <th>Quantidade</th>
+              <th>Estado</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaEstoque"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let urlAppsScript = localStorage.getItem('urlScript') || '';
+    let idPlanilha = localStorage.getItem('idPlanilha') || '';
+    let graficoMensal = null;
+
+    const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    function formatarDataHoje() {
+      const hoje = new Date();
+      const dia = String(hoje.getDate()).padStart(2, '0');
+      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+      const ano = hoje.getFullYear();
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    function parseDataBR(dataStr) {
+      if (!dataStr || typeof dataStr !== 'string') return null;
+      const partes = dataStr.split('/');
+      if (partes.length !== 3) return null;
+      const [dd, mm, aaaa] = partes.map(p => parseInt(p, 10));
+      if (!dd || !mm || !aaaa) return null;
+      return new Date(aaaa, mm - 1, dd);
+    }
+
+    function exibirMensagem(texto, tipo) {
+      const msg = document.getElementById('mensagem');
+      msg.className = 'alerta mostrar ' + tipo;
+      msg.textContent = texto;
+      setTimeout(() => { msg.className = 'alerta'; }, 3500);
+    }
+
+    function mudarAba(ev, nomeAba) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
+      document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativo'));
+
+      ev.target.classList.add('ativo');
+      document.getElementById(nomeAba).classList.add('ativo');
+
+      if (nomeAba === 'dashboard') carregarDashboard();
+      if (nomeAba === 'estoque') atualizarEstoque();
+      if (nomeAba === 'saida') {
+        carregarEstoqueDisponivel();
+        carregarSaidas();
+      }
+    }
+
+    function salvarConfiguracao() {
+      const id = document.getElementById('idPlanilha').value.trim();
+      const url = document.getElementById('urlScript').value.trim();
+
+      if (!id || !url) {
+        exibirMensagem('Preencha todos os campos!', 'erro');
+        return;
+      }
+
+      if (!url.includes('/exec')) {
+        exibirMensagem('URL inválida! Deve terminar com /exec', 'erro');
+        return;
+      }
+
+      localStorage.setItem('idPlanilha', id);
+      localStorage.setItem('urlScript', url);
+      idPlanilha = id;
+      urlAppsScript = url;
+
+      exibirMensagem('Configuração salva!', 'sucesso');
+      testarConexao();
+    }
+
+    // CORRIGIDO: testarConexao agora usa GET com acao=ping e idPlanilha
+    async function testarConexao() {
+      try {
+        const resp = await fetch(`${urlAppsScript}?acao=ping&idPlanilha=${encodeURIComponent(idPlanilha)}`);
+        const dados = await resp.json();
+        if (dados.status === 'ok') {
+          exibirMensagem('Conexão OK! Sistema pronto para uso.', 'sucesso');
+        } else {
+          exibirMensagem('Resposta inesperada do Apps Script.', 'info');
+        }
+      } catch (e) {
+        exibirMensagem('Erro ao conectar com Apps Script. Verifique a URL /exec e permissões.', 'erro');
+      }
+    }
+
+    // CORRIGIDO: removido header Content-Type
+    async function registrarEntrada(e) {
+      e.preventDefault();
+
+      if (!urlAppsScript || !idPlanilha) {
+        exibirMensagem('Configure o sistema primeiro (ID + URL)!', 'erro');
+        return;
+      }
+
+      const dados = {
+        acao: 'adicionarEntrada',
+        idPlanilha: idPlanilha,
+        data: formatarDataHoje(),
+        tipo: document.getElementById('tipoEntrada').value,
+        genero: document.getElementById('generoEntrada').value,
+        tamanho: document.getElementById('tamanhoEntrada').value,
+        quantidade: parseInt(document.getElementById('qtdEntrada').value, 10),
+        estado: document.getElementById('estadoEntrada').value
+      };
+
+      try {
+        exibirMensagem('Salvando...', 'info');
+        const resp = await fetch(urlAppsScript, {
+          method: 'POST',
+          body: JSON.stringify(dados)
+        });
+        const result = await resp.json();
+
+        if (result.status === 'success') {
+          exibirMensagem('Doação registrada!', 'sucesso');
+          document.getElementById('formEntrada').reset();
+        } else {
+          throw new Error(result.mensagem || 'Falha ao registrar entrada');
+        }
+      } catch (erro) {
+        exibirMensagem('Erro: ' + erro.message, 'erro');
+      }
+    }
+
+    // CORRIGIDO: removido header Content-Type
+    async function registrarSaida(e) {
+      e.preventDefault();
+
+      if (!urlAppsScript || !idPlanilha) {
+        exibirMensagem('Configure o sistema primeiro (ID + URL)!', 'erro');
+        return;
+      }
+
+      const dados = {
+        acao: 'adicionarSaida',
+        idPlanilha: idPlanilha,
+        data: formatarDataHoje(),
+        tipo: document.getElementById('saidaTipo').value,
+        genero: document.getElementById('saidaGenero').value,
+        tamanho: document.getElementById('saidaTamanho').value,
+        quantidade: parseInt(document.getElementById('saidaQuantidade').value, 10),
+        beneficiario: document.getElementById('beneficiario').value || '-',
+        voluntario: '-'
+      };
+
+      try {
+        exibirMensagem('Salvando...', 'info');
+        const resp = await fetch(urlAppsScript, {
+          method: 'POST',
+          body: JSON.stringify(dados)
+        });
+        const result = await resp.json();
+
+        if (result.status === 'success') {
+          exibirMensagem('Entrega registrada!', 'sucesso');
+          document.getElementById('formSaida').reset();
+          carregarEstoqueDisponivel();
+          carregarSaidas();
+        } else {
+          throw new Error(result.mensagem || 'Falha ao registrar saída');
+        }
+      } catch (erro) {
+        exibirMensagem('Erro: ' + erro.message, 'erro');
+      }
+    }
+
+    async function excluirEstoque(tipo, genero, tamanho) {
+      if (!confirm('Tem certeza que deseja excluir este item do estoque?')) return;
+
+      if (!urlAppsScript || !idPlanilha) {
+        exibirMensagem('Configure o sistema primeiro (ID + URL)!', 'erro');
+        return;
+      }
+
+      try {
+        exibirMensagem('Excluindo...', 'info');
+
+        const dados = {
+          acao: 'excluirEstoque',
+          idPlanilha: idPlanilha,
+          tipo: tipo,
+          genero: genero,
+          tamanho: tamanho
+        };
+
+        const resp = await fetch(urlAppsScript, {
+          method: 'POST',          
+          body: JSON.stringify(dados)
+        });
+
+        const result = await resp.json();
+
+        if (result.status === 'success') {
+          exibirMensagem('Item excluído!', 'sucesso');
+          atualizarEstoque();
+        } else {
+          throw new Error(result.mensagem || 'Falha ao excluir');
+        }
+      } catch (erro) {
+        exibirMensagem('Erro: ' + erro.message, 'erro');
+      }
+    }
+
+    function urlLer(aba) {
+      return `${urlAppsScript}?acao=lerDados&aba=${encodeURIComponent(aba)}&idPlanilha=${encodeURIComponent(idPlanilha)}`;
+    }
+
+    async function carregarDashboard() {
+      if (!urlAppsScript || !idPlanilha) return;
+
+      const recebidasPorMes = new Array(12).fill(0);
+      const doadasPorMes = new Array(12).fill(0);
+
+      const hoje = new Date();
+      const mesAtual = hoje.getMonth();
+      const anoAtual = hoje.getFullYear();
+
+      let totalEntradasMes = 0;
+      let totalSaidasMes = 0;
+      let totalEmEstoque = 0;
+
+      try {
+        const [respEntradas, respSaidas, respEstoque] = await Promise.all([
+          fetch(urlLer('Entrada')),
+          fetch(urlLer('Saidas')),
+          fetch(urlLer('Estoque'))
+        ]);
+
+        const entradas = await respEntradas.json();
+        const saidas = await respSaidas.json();
+        const estoque = await respEstoque.json();
+
+        if (entradas.status !== 'success') throw new Error('Entradas: ' + (entradas.mensagem || 'erro desconhecido'));
+        if (saidas.status !== 'success') throw new Error('Saidas: ' + (saidas.mensagem || 'erro desconhecido'));
+        if (estoque.status !== 'success') throw new Error('Estoque: ' + (estoque.mensagem || 'erro desconhecido'));
+
+        if (entradas.dados) {
+          entradas.dados.forEach(linha => {
+            const data = parseDataBR(linha[0]);
+            const qtd = parseInt(linha[4], 10) || 0;
+            if (!data || qtd <= 0) return;
+
+            const m = data.getMonth();
+            recebidasPorMes[m] += qtd;
+
+            if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) {
+              totalEntradasMes += qtd;
+            }
+          });
+        }
+
+        if (saidas.dados) {
+          saidas.dados.forEach(linha => {
+            const data = parseDataBR(linha[0]);
+            const qtd = parseInt(linha[4], 10) || 0;
+            if (!data || qtd <= 0) return;
+
+            const m = data.getMonth();
+            doadasPorMes[m] += qtd;
+
+            if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) {
+              totalSaidasMes += qtd;
+            }
+          });
+        }
+
+        if (estoque.dados) {
+          estoque.dados.forEach(linha => {
+            totalEmEstoque += parseInt(linha[3], 10) || 0;
+          });
+        }
+
+        document.getElementById('totalRecebidas').textContent = totalEntradasMes;
+        document.getElementById('totalDoadas').textContent = totalSaidasMes;
+        document.getElementById('totalEstoque').textContent = totalEmEstoque;
+
+      } catch (erro) {
+        console.error('Erro ao carregar dashboard:', erro);
+        document.getElementById('totalRecebidas').textContent = '0';
+        document.getElementById('totalDoadas').textContent = '0';
+        document.getElementById('totalEstoque').textContent = '0';
+      }
+
+      const ctx = document.getElementById('graficoMensal');
+      if (graficoMensal) graficoMensal.destroy();
+
+      graficoMensal = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: MESES,
+          datasets: [
+            { 
+              label: 'Recebidas', 
+              data: recebidasPorMes, 
+              backgroundColor: '#4CAF50',
+              borderColor: '#2E7D32',
+              borderWidth: 2
+            },
+            { 
+              label: 'Doadas', 
+              data: doadasPorMes, 
+              backgroundColor: '#FF6B6B',
+              borderColor: '#C92A2A',
+              borderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { 
+            legend: { 
+              display: true,
+              labels: {
+                font: { size: 14, weight: 'bold' },
+                padding: 15
+              }
+            }
+          },
+          scales: { 
+            y: { 
+              beginAtZero: true, 
+              ticks: { precision: 0 }
+            } 
+          }
+        }
+      });
+    }
+
+    async function carregarSaidas() {
+      const tbody = document.getElementById('tabelaSaidas');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Carregando...</td></tr>';
+
+      try {
+        const resp = await fetch(urlLer('Saidas'));
+        const result = await resp.json();
+
+        if (result.dados && result.dados.length > 0) {
+          tbody.innerHTML = result.dados.slice(-10).reverse().map(item => `
+            <tr>
+              <td>${item[0]}</td>
+              <td>${item[1]}</td>
+              <td>${item[3]}</td>
+              <td>${item[4]}</td>
+              <td>${item[5]}</td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Nenhuma entrega registrada</td></tr>';
+        }
+      } catch (erro) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Erro ao carregar</td></tr>';
+      }
+    }
+
+    async function carregarEstoqueDisponivel() {
+      const tbody = document.getElementById('tabelaEstoqueDisponivel');
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Carregando...</td></tr>';
+
+      try {
+        const resp = await fetch(urlLer('Estoque'));
+        const result = await resp.json();
+
+        if (result.dados && result.dados.length > 0) {
+          tbody.innerHTML = result.dados.map(item => `
+            <tr>
+              <td>${item[0]}</td>
+              <td>${item[1]}</td>
+              <td>${item[2]}</td>
+              <td><strong>${item[3]}</strong></td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Estoque vazio</td></tr>';
+        }
+      } catch (erro) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Erro ao carregar</td></tr>';
+      }
+    }
+
+    async function atualizarEstoque() {
+      const tbody = document.getElementById('tabelaEstoque');
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Carregando...</td></tr>';
+
+      try {
+        const resp = await fetch(urlLer('Estoque'));
+        const result = await resp.json();
+
+        if (result.dados && result.dados.length > 0) {
+          tbody.innerHTML = result.dados.map(item => `
+            <tr>
+              <td>${item[0]}</td>
+              <td>${item[1]}</td>
+              <td>${item[2]}</td>
+              <td>${item[3]}</td>
+              <td>${item[4]}</td>
+              <td>
+                <button class="botao btn-danger" style="padding:5px 10px; font-size:12px;"
+                  onclick="excluirEstoque('${item[0]}','${item[1]}','${item[2]}')">
+                  Excluir
+                </button>
+              </td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Estoque vazio</td></tr>';
+        }
+      } catch (erro) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Erro ao carregar</td></tr>';
+      }
+    }
+
+    window.onload = function () {
+      const id = localStorage.getItem('idPlanilha');
+      const url = localStorage.getItem('urlScript');
+
+      if (id) document.getElementById('idPlanilha').value = id;
+      if (url) document.getElementById('urlScript').value = url;
+
+      idPlanilha = id || '';
+      urlAppsScript = url || '';
+    };
+  </script>
+</body>
+</html>
